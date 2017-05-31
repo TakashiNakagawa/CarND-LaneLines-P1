@@ -43,7 +43,7 @@
 
 # ## Import Packages
 
-# In[1]:
+# In[23]:
 
 #importing some useful packages
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ get_ipython().magic('matplotlib inline')
 
 # ## Read in an Image
 
-# In[2]:
+# In[24]:
 
 #reading in an image
 image = mpimg.imread('test_images/solidWhiteRight.jpg')
@@ -83,7 +83,7 @@ plt.imshow(image)  # if you wanted to show a single color channel image called '
 
 # Below are some helper functions to help get you started. They should look familiar from the lesson!
 
-# In[3]:
+# In[25]:
 
 import math
 
@@ -184,7 +184,7 @@ def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
 # Build your pipeline to work on the images in the directory "test_images"  
 # **You should make sure your pipeline works well on these images before you try the videos.**
 
-# In[4]:
+# In[26]:
 
 import os
 os.listdir("test_images/")
@@ -198,7 +198,7 @@ os.listdir("test_images/")
 # 
 # Try tuning the various parameters, especially the low and high Canny thresholds as well as the Hough lines parameters.
 
-# In[31]:
+# In[27]:
 
 class LineExtender:
     @staticmethod
@@ -264,7 +264,7 @@ class LineExtender:
         return intersects
 
 
-# In[53]:
+# In[58]:
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images directory.
@@ -331,8 +331,8 @@ def find_lines(img):
     #Hough
     rho = 1 # distance resolution in pixels of the Hough grid
     theta = np.pi/180 # angular resolution in radians of the Hough grid
-    threshold = 80     # minimum number of votes (intersections in Hough grid cell)
-    min_line_length = 50 #minimum number of pixels making up a line
+    threshold = 50     # minimum number of votes (intersections in Hough grid cell)
+    min_line_length = 40 #minimum number of pixels making up a line
     max_line_gap = 100    # maximum gap in pixels between connectable line segments
     lines_img = my_hough_lines(masked_img,  rho, theta, threshold, min_line_length, max_line_gap)
     
@@ -349,6 +349,8 @@ for img in glob.glob("test_images/*.jpg"):
     img_with_lines = find_lines(image)
     new_name = "{}_{}".format(name, ext)
     cv2.imwrite(new_name, cv2.cvtColor(img_with_lines, cv2.COLOR_RGB2BGR))
+    plt.imshow(img_with_lines)
+    plt.show()
     
 
 
@@ -373,26 +375,26 @@ for img in glob.glob("test_images/*.jpg"):
 # ```
 # **Follow the instructions in the error message and check out [this forum post](https://carnd-forums.udacity.com/display/CAR/questions/26218840/import-videofileclip-error) for more troubleshooting tips across operating systems.**
 
-# In[ ]:
+# In[29]:
 
 # Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 
 
-# In[ ]:
+# In[30]:
 
 def process_image(image):
     # NOTE: The output you return should be a color image (3 channel) for processing video below
     # TODO: put your pipeline here,
     # you should return the final output (image where lines are drawn on lanes)
-
+    result = find_lines(image)
     return result
 
 
 # Let's try the one with the solid white lane on the right first ...
 
-# In[ ]:
+# In[61]:
 
 white_output = 'test_videos_output/solidWhiteRight.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -407,7 +409,7 @@ get_ipython().magic('time white_clip.write_videofile(white_output, audio=False)'
 
 # Play the video inline, or if you prefer find the video in your filesystem (should be in the same directory) and play it in your video player of choice.
 
-# In[ ]:
+# In[62]:
 
 HTML("""
 <video width="960" height="540" controls>
@@ -424,7 +426,7 @@ HTML("""
 
 # Now for the one with the solid yellow lane on the left. This one's more tricky!
 
-# In[ ]:
+# In[59]:
 
 yellow_output = 'test_videos_output/solidYellowLeft.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -437,7 +439,7 @@ yellow_clip = clip2.fl_image(process_image)
 get_ipython().magic('time yellow_clip.write_videofile(yellow_output, audio=False)')
 
 
-# In[ ]:
+# In[60]:
 
 HTML("""
 <video width="960" height="540" controls>
@@ -455,7 +457,7 @@ HTML("""
 # 
 # Try your lane finding pipeline on the video below.  Does it still work?  Can you figure out a way to make it more robust?  If you're up for the challenge, modify your pipeline so it works with this video and submit it along with the rest of your project!
 
-# In[ ]:
+# In[35]:
 
 challenge_output = 'test_videos_output/challenge.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -468,7 +470,7 @@ challenge_clip = clip3.fl_image(process_image)
 get_ipython().magic('time challenge_clip.write_videofile(challenge_output, audio=False)')
 
 
-# In[ ]:
+# In[36]:
 
 HTML("""
 <video width="960" height="540" controls>
