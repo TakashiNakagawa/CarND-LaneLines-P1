@@ -43,7 +43,7 @@
 
 # ## Import Packages
 
-# In[4]:
+# In[1]:
 
 #importing some useful packages
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ get_ipython().magic('matplotlib inline')
 
 # ## Read in an Image
 
-# In[5]:
+# In[2]:
 
 #reading in an image
 image = mpimg.imread('test_images/solidWhiteRight.jpg')
@@ -83,7 +83,7 @@ plt.imshow(image)  # if you wanted to show a single color channel image called '
 
 # Below are some helper functions to help get you started. They should look familiar from the lesson!
 
-# In[6]:
+# In[3]:
 
 import math
 
@@ -184,7 +184,7 @@ def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
 # Build your pipeline to work on the images in the directory "test_images"  
 # **You should make sure your pipeline works well on these images before you try the videos.**
 
-# In[7]:
+# In[4]:
 
 import os
 os.listdir("test_images/")
@@ -198,7 +198,7 @@ os.listdir("test_images/")
 # 
 # Try tuning the various parameters, especially the low and high Canny thresholds as well as the Hough lines parameters.
 
-# In[19]:
+# In[31]:
 
 class LineExtender:
     @staticmethod
@@ -225,7 +225,7 @@ class LineExtender:
         for b in borders:
             p = np.cross(segment, b)
             if p[2] != 0:
-                intersects.append(np.array([p[0]/p[2], p[1]/p[2]]).astype(np.int64))
+                intersects.append(np.array([p[0]/p[2], p[1]/p[2]]).astype(np.uint64))
         return intersects
 
     @staticmethod
@@ -234,8 +234,6 @@ class LineExtender:
         end = np.array([line[2], line[3]])
         positive_pos = {}
         negative_pos = {}
-        print("stt, end", stt, end)
-        print("intersects", intersects)
         for p in intersects:
             val = np.inner((end-stt), p - stt)
             if val >= 0:
@@ -250,44 +248,33 @@ class LineExtender:
 
         positive_pos_sorted = sorted(positive_pos.items())
         negative_pos_sorted = sorted(negative_pos.items())
-        print("positive_pos_sorted, negative_pos_sorted", positive_pos_sorted, negative_pos_sorted)
         return [negative_pos_sorted[-1][1], positive_pos_sorted[0][1]]  
 
-    def extend(self, line, width, height):
+    @staticmethod
+    def extend(line, width, height):
         '''
         lineA := ax + by + c = 0
         lineB := a'x + b'y + c' = 0
         intersect = (a, b, c)T x (a', b', c')T  (Homogeneous coordinates)
         '''
-        segment = line_segment(line)    
-        borders = image_borders(width, height)    
-        intersects = intersect_points(borders, segment)
-        intersects = select_intersect_points(intersects, line)
+        segment = LineExtender.__line_segment(line)    
+        borders = LineExtender.__image_borders(width, height)    
+        intersects = LineExtender.__intersect_points(borders, segment)
+        intersects = LineExtender.__select_intersect_points(intersects, line)
         return intersects
 
 
-line = [10, 10, 50, 20]
-len_x = 100
-len_y = 100
-ret = LineExtender().extend(line, len_x, len_y)
-print(ret)
-
-
-# In[ ]:
+# In[53]:
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images directory.
 import glob
 
-def debug_show(img):
-    plt.imshow(img, cmap='gray') 
-    plt.show()
-    
 def draw_lines2(img, lines, color=[255, 0, 0], thickness=2):
     """
     """
     for line in lines:
-        x1,y1,x2,y2 = line[0], line[1], line[2], line[3]
+        x1,y1,x2,y2 = line[0][0], line[0][1], line[1][0], line[1][1]
         cv2.line(img, (x1, y1), (x2, y2), color, thickness)
     
 def separate_lines(lines):
@@ -304,19 +291,18 @@ def separate_lines(lines):
     return np.array(left), np.array(right)
 
 
-    
-
 def my_hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
-        lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+        lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)        
         left, right = separate_lines(lines)
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
         extended_lines = []
 
         for l  in left:
-            extended_lines.append(extend_line(l, img.shape[1]))
+            extended_lines.append(LineExtender.extend(l, img.shape[1], img.shape[0]))
         for r in right:
-            extended_lines.append(extend_line(r, img.shape[1]))
+            extended_lines.append(LineExtender.extend(r, img.shape[1], img.shape[0]))
         draw_lines2(line_img, extended_lines)
+        return line_img
 
 def roi_vertices(img):
     '''return vertices of region of interest'''
@@ -335,12 +321,9 @@ def find_lines(img):
     
     # GaussianBlur
     blur_gray = gaussian_blur(gray, 5)
-    
-    debug_show(region_of_interest(blur_gray,  roi_vertices(img)))
 
     # canny edge
     edges = canny(blur_gray, 50, 150)
-    debug_show(edges)
     
     # image mask
     masked_img = region_of_interest(edges,  roi_vertices(edges))
@@ -353,16 +336,20 @@ def find_lines(img):
     max_line_gap = 100    # maximum gap in pixels between connectable line segments
     lines_img = my_hough_lines(masked_img,  rho, theta, threshold, min_line_length, max_line_gap)
     
-    debug_show(lines_img)
+    masked_img2 = region_of_interest(lines_img,  roi_vertices(lines_img))
     
-    img_result = weighted_img(img, lines_img)
-    debug_show(img_result)
+    img_result = weighted_img(img, masked_img2)
+    return img_result
     
 for img in glob.glob("test_images/*.jpg"):
+    name, ext  = os.path.splitext(img)
+    if "_" in os.path.basename(name):
+        continue        
     image = mpimg.imread(img)
-    plt.imshow(image) 
-    plt.show()
-    find_lines(image)
+    img_with_lines = find_lines(image)
+    new_name = "{}_{}".format(name, ext)
+    cv2.imwrite(new_name, cv2.cvtColor(img_with_lines, cv2.COLOR_RGB2BGR))
+    
 
 
 
