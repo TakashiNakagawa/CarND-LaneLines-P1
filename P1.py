@@ -264,7 +264,7 @@ class LineExtender:
         return intersects
 
 
-# In[58]:
+# In[71]:
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images directory.
@@ -291,8 +291,14 @@ def separate_lines(lines):
     return np.array(left), np.array(right)
 
 
-def my_hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
-        lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)        
+def my_hough_lines(img):
+        rho = 1 # distance resolution in pixels of the Hough grid
+        theta = np.pi/180 # angular resolution in radians of the Hough grid
+        threshold = 50     # minimum number of votes (intersections in Hough grid cell)
+        min_line_length = 40 #minimum number of pixels making up a line
+        max_line_gap = 100    # maximum gap in pixels between connectable line segments
+
+        lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_length, maxLineGap=max_line_gap)        
         left, right = separate_lines(lines)
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
         extended_lines = []
@@ -302,6 +308,9 @@ def my_hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
         for r in right:
             extended_lines.append(LineExtender.extend(r, img.shape[1], img.shape[0]))
         draw_lines2(line_img, extended_lines)
+          
+        line_img = region_of_interest(line_img,  roi_vertices(line_img))
+  
         return line_img
 
 def roi_vertices(img):
@@ -314,7 +323,7 @@ def roi_vertices(img):
     return np.array([[tl, bl, br, tr]], dtype=np.int32) 
 
 def find_lines(img):
-    '''detect all lines'''
+    '''detect  lines'''
     
     # convert to gray scale
     gray = grayscale(img)
@@ -329,25 +338,17 @@ def find_lines(img):
     masked_img = region_of_interest(edges,  roi_vertices(edges))
 
     #Hough
-    rho = 1 # distance resolution in pixels of the Hough grid
-    theta = np.pi/180 # angular resolution in radians of the Hough grid
-    threshold = 50     # minimum number of votes (intersections in Hough grid cell)
-    min_line_length = 40 #minimum number of pixels making up a line
-    max_line_gap = 100    # maximum gap in pixels between connectable line segments
-    lines_img = my_hough_lines(masked_img,  rho, theta, threshold, min_line_length, max_line_gap)
+    lines_img = my_hough_lines(masked_img)
     
-    masked_img2 = region_of_interest(lines_img,  roi_vertices(lines_img))
-    
-    img_result = weighted_img(img, masked_img2)
+    #overlap image
+    img_result = weighted_img(img, lines_img)
     return img_result
     
 for img in glob.glob("test_images/*.jpg"):
-    name, ext  = os.path.splitext(img)
-    if "_" in os.path.basename(name):
-        continue        
     image = mpimg.imread(img)
     img_with_lines = find_lines(image)
-    new_name = "{}_{}".format(name, ext)
+    name, ext  = os.path.splitext(img)  
+    new_name = "test_images_output/{}{}".format(os.path.basename(name), ext)
     cv2.imwrite(new_name, cv2.cvtColor(img_with_lines, cv2.COLOR_RGB2BGR))
     plt.imshow(img_with_lines)
     plt.show()
