@@ -380,8 +380,6 @@ def find_lines(img):
     #overlap image
     img_result = weighted_img(img, lines_img)
     
-    #test
-#     img_result = region_of_interest(img_result,  roi_vertices(img_result))
     return img_result
     
 for img in glob.glob("test_images/*.jpg"):
