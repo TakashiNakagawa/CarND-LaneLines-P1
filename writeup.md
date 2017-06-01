@@ -12,7 +12,8 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/grayscale.jpg "Grayscale"
+[image2]: ./doc_images/separate_lane.jpg "SeparateLane"
+[image3]: ./doc_images/extend_lane.jpg "ExtendLane"
 
 ---
 
@@ -26,8 +27,7 @@ In order to draw a single line on the left and right lanes, I modified the draw_
 
 If you'd like to include images to show how the pipeline works, here is how to include an image: -->
 
-My pipeline consisted of 6 steps.
-
+#### My pipeline consisted of 6 steps.
 1. convert the images to grayscale
 2. apply GaussianBlur to images
 3. detect edges by canny algorithm
@@ -35,35 +35,41 @@ My pipeline consisted of 6 steps.
 5. convert edges to lines by Hough algorithm
 6. overlay original image and lines
 
-Step 5 consisted of 3 steps.
+#### Step 5 consisted of 5 steps.
+1. apply cv2.HoughLinesP
+2. separate left and right lanes
+3. lanes are extended to image border
+4. apply an image mask to lines
+5. left and right lanes are extracted to a single line
 
-1.
-2.
-3.
+#### separate left and right lanes
+In order to separate left and right lanes, I calculated the inner product of y-axis and lane direction.  
+(lane direction was adjusted so that x value was to be positive beforehand.)  
+if absolute of inner product value was too small, it was not lane. it might be noise.
+if an inner product was positive, then the lane might be the right lane.  
+if an inner product was negative, then the lane might be the left lane.  
 
+![alt text][image2]
 
-![alt text][image1]
+#### lanes are extended to image border
+In order to extend lanes, I calculated intersect points of lane and image borders.  
+I select near side points, then I apply image mask to trim lanes.
+
+![alt text][image3]
+
+#### left and right lanes are extracted to a single line
+In order to extract a single line, I calculated the angle of lanes and y-axis.  
+I sorted lanes by angle order, then I choose middle index of angle.  
 
 
 ### 2. Identify potential shortcomings with your current pipeline
 
-
-One potential shortcoming would be what would happen when ...
-
-Another shortcoming could be ...
-
-白線がこまかい
-カメラを取り替えた場合
-他の車が多い場合
-画質が変わった場合
-
+There are several shortcomings.
+1. When a white or yellow lane is small, cv2.HoughLinesP needs parameter changing. So it is not robust.
+2. When other cars running in front of this car, a lane can not be captured. So it will be difficult to detect lane.
 
 ### 3. Suggest possible improvements to your pipeline
 
-A possible improvement would be to ...
-
-Another potential improvement could be to ...
-
-消失点を求める
-単体の画像ではなくシーケンス画像として扱えるようにすればもう少しうまく動くようになる
-前回の白線の位置も覚えるようにしておく
+There are several possible improvements.
+1. If vanishing point could be decided, then select edges, lanes could be robust. Because lanes are on the vanishing point. In order to decide vanishing point, optical flow using sequential images might be needed.
+2. With sequential images, if lanes are lost, then previous lanes of the image would compensate current lanes.
