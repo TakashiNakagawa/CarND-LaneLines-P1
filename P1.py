@@ -43,7 +43,7 @@
 
 # ## Import Packages
 
-# In[23]:
+# In[153]:
 
 #importing some useful packages
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ get_ipython().magic('matplotlib inline')
 
 # ## Read in an Image
 
-# In[24]:
+# In[154]:
 
 #reading in an image
 image = mpimg.imread('test_images/solidWhiteRight.jpg')
@@ -83,7 +83,7 @@ plt.imshow(image)  # if you wanted to show a single color channel image called '
 
 # Below are some helper functions to help get you started. They should look familiar from the lesson!
 
-# In[25]:
+# In[155]:
 
 import math
 
@@ -184,7 +184,7 @@ def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
 # Build your pipeline to work on the images in the directory "test_images"  
 # **You should make sure your pipeline works well on these images before you try the videos.**
 
-# In[26]:
+# In[156]:
 
 import os
 os.listdir("test_images/")
@@ -198,7 +198,7 @@ os.listdir("test_images/")
 # 
 # Try tuning the various parameters, especially the low and high Canny thresholds as well as the Hough lines parameters.
 
-# In[27]:
+# In[157]:
 
 class LineExtender:
     @staticmethod
@@ -264,32 +264,64 @@ class LineExtender:
         return intersects
 
 
-# In[71]:
+# In[158]:
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images directory.
 import glob
-
+import math
+    
 def draw_lines2(img, lines, color=[255, 0, 0], thickness=2):
     """
+    draw lines to image
     """
     for line in lines:
+        if len(line) == 0:
+            continue
         x1,y1,x2,y2 = line[0][0], line[0][1], line[1][0], line[1][1]
         cv2.line(img, (x1, y1), (x2, y2), color, thickness)
     
-def separate_lines(lines):
+def separate_left_right_lines(lines):
+    """
+    separate line to left and right
+    """
     left = []
     right = []
     for l in lines:
         dir = np.array([l[0][2] - l[0][0], l[0][3] - l[0][1]])
-        if l[0][0] < l[0][2]:
-            dir[0], dir[1] = dir[1], dir[0]
-        if np.inner(dir, [0,1]) < 0:
+        if dir[0] < 0:
+            dir *= -1
+        dir = dir / np.linalg.norm(dir)
+        inner = np.inner(dir, [0,1])
+        if abs(inner) < 0.2:
+            # maybe not lane
+            continue
+        elif np.inner(dir, [0,1]) < 0:
             left.append(l[0])
         else:
             right.append(l[0])
     return np.array(left), np.array(right)
 
+def filter_lines(lines):
+    """
+    filter lines and select one line
+    """
+    if len(lines) == 0:
+        return []
+    elif len(lines) <= 2:
+        return lines[0]
+    
+    inner_values = {}
+    for l in lines:
+        dir = l[0] - l[1]
+        dir = dir / np.linalg.norm(dir)
+        val = np.inner(dir, [0,1])
+        inner_values[val] = l
+    
+    inner_values = sorted(inner_values.items())
+    index = math.floor(len(inner_values)/2)
+    return inner_values[index][1]
+    
 
 def my_hough_lines(img):
         rho = 1 # distance resolution in pixels of the Hough grid
@@ -299,15 +331,18 @@ def my_hough_lines(img):
         max_line_gap = 100    # maximum gap in pixels between connectable line segments
 
         lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_length, maxLineGap=max_line_gap)        
-        left, right = separate_lines(lines)
+        left, right = separate_left_right_lines(lines)
         line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-        extended_lines = []
 
+        left_extended = []        
         for l  in left:
-            extended_lines.append(LineExtender.extend(l, img.shape[1], img.shape[0]))
+            left_extended.append(LineExtender.extend(l, img.shape[1], img.shape[0]))
+        draw_lines2(line_img, [filter_lines(left_extended)], [255, 0, 0], 10)
+            
+        right_exteded = []
         for r in right:
-            extended_lines.append(LineExtender.extend(r, img.shape[1], img.shape[0]))
-        draw_lines2(line_img, extended_lines)
+            right_exteded.append(LineExtender.extend(r, img.shape[1], img.shape[0]))            
+        draw_lines2(line_img, [filter_lines(right_exteded)], [255, 0, 0], 10)
           
         line_img = region_of_interest(line_img,  roi_vertices(line_img))
   
@@ -316,10 +351,10 @@ def my_hough_lines(img):
 def roi_vertices(img):
     '''return vertices of region of interest'''
     img_shape = img.shape
-    tl = (470, 300)
-    bl = (20, img_shape[0])
-    br = (img_shape[1] - 20, img_shape[0])
-    tr = (470, 300)
+    tl = (img_shape[1]/2 -50, img_shape[0]/2 + 55)
+    bl = (40, img_shape[0])
+    br = (img_shape[1] - 30, img_shape[0])
+    tr = (img_shape[1]/2 + 50, img_shape[0]/2 + 55)
     return np.array([[tl, bl, br, tr]], dtype=np.int32) 
 
 def find_lines(img):
@@ -342,6 +377,9 @@ def find_lines(img):
     
     #overlap image
     img_result = weighted_img(img, lines_img)
+    
+    #test
+#     img_result = region_of_interest(img_result,  roi_vertices(img_result))
     return img_result
     
 for img in glob.glob("test_images/*.jpg"):
@@ -376,14 +414,14 @@ for img in glob.glob("test_images/*.jpg"):
 # ```
 # **Follow the instructions in the error message and check out [this forum post](https://carnd-forums.udacity.com/display/CAR/questions/26218840/import-videofileclip-error) for more troubleshooting tips across operating systems.**
 
-# In[29]:
+# In[159]:
 
 # Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 
 
-# In[30]:
+# In[160]:
 
 def process_image(image):
     # NOTE: The output you return should be a color image (3 channel) for processing video below
@@ -395,7 +433,7 @@ def process_image(image):
 
 # Let's try the one with the solid white lane on the right first ...
 
-# In[61]:
+# In[161]:
 
 white_output = 'test_videos_output/solidWhiteRight.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -410,7 +448,7 @@ get_ipython().magic('time white_clip.write_videofile(white_output, audio=False)'
 
 # Play the video inline, or if you prefer find the video in your filesystem (should be in the same directory) and play it in your video player of choice.
 
-# In[62]:
+# In[162]:
 
 HTML("""
 <video width="960" height="540" controls>
@@ -427,7 +465,7 @@ HTML("""
 
 # Now for the one with the solid yellow lane on the left. This one's more tricky!
 
-# In[59]:
+# In[163]:
 
 yellow_output = 'test_videos_output/solidYellowLeft.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -440,7 +478,7 @@ yellow_clip = clip2.fl_image(process_image)
 get_ipython().magic('time yellow_clip.write_videofile(yellow_output, audio=False)')
 
 
-# In[60]:
+# In[164]:
 
 HTML("""
 <video width="960" height="540" controls>
@@ -458,7 +496,7 @@ HTML("""
 # 
 # Try your lane finding pipeline on the video below.  Does it still work?  Can you figure out a way to make it more robust?  If you're up for the challenge, modify your pipeline so it works with this video and submit it along with the rest of your project!
 
-# In[35]:
+# In[165]:
 
 challenge_output = 'test_videos_output/challenge.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
@@ -471,7 +509,7 @@ challenge_clip = clip3.fl_image(process_image)
 get_ipython().magic('time challenge_clip.write_videofile(challenge_output, audio=False)')
 
 
-# In[36]:
+# In[166]:
 
 HTML("""
 <video width="960" height="540" controls>
